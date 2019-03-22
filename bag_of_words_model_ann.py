@@ -10,12 +10,14 @@ __status__ = "Prototype"
 import pandas as pd
 
 #importing the data set
-dataset = pd.read_csv('sample_production_data.csv', sep='\t')
+dataset = pd.read_excel('sample_production_data.xlsx')
+
+# ------ Processing the Data -------
 
 # Processing the domain names (text)
 import re
 corpus = []
-for i in range(0,97734):
+for i in range(0,16652):
     domains = re.sub('[.]', ' ', dataset['Domain'][i]);
     domains = domains.lower()
     domains = domains.split()
@@ -24,37 +26,49 @@ for i in range(0,97734):
     
 # Creating the Bag of Words model
 from sklearn.feature_extraction.text import CountVectorizer
-cv = CountVectorizer()
+cv = CountVectorizer(max_features = 15000)
 X = cv.fit_transform(corpus).toarray()
 Y = dataset.iloc[:,1].values
 
 # Spliting the dataset into the Training and Test Set
 from sklearn.model_selection import train_test_split
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size = 0.25, random_state = 0)
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size = 0.2, random_state = 0)
 
-# Fitting the dataset into the Training set (Implementing Decison Tree)
-from sklearn import tree
-decision_tree_classifier = tree.DecisionTreeClassifier()
-decision_tree_classifier = decision_tree_classifier.fit(X_train, Y_train)
-print("DecisionTreeClassifier")
 
-# Fitting the dataset into the Training set (Implementing Naive Bayes Tree)
-from sklearn.naive_bayes import GaussianNB
-naive_bayes_classifier = GaussianNB()
-naive_bayes_classifier.fit(X_train, Y_train)
-print("Naive Bayes")
+# ------ Making the ANN model -------
+
+# Importing the Keras libraries and packages
+import keras
+from keras.models import Sequential
+from keras.layers import Dense
+
+# Initializing the ANN
+classifier = Sequential()
+
+# Adding the input layer and the first hidden layer
+classifier.add(Dense(output_dim = 7500, init =  'uniform', activation = 'relu', input_dim = 15000))
+
+# Adding the second hidden layer
+classifier.add(Dense(output_dim = 7500, init =  'uniform', activation = 'relu'))
+
+# Adding the output layer
+classifier.add(Dense(output_dim = 1, init =  'uniform', activation = 'sigmoid'))
+
+# Compiling the ANN
+classifier.compile(optimizer = 'adam', loss = 'binary_crossentropy', metrics = ['accuracy'])
+
+# Fitting the ANN to the Training set
+classifier.fit(X_train, Y_train, batch_size = 32, epochs = 100)
+
+
+# ------ Evaluation -------
 
 # Predicting the Test set results
-Y_pred = decision_tree_classifier.predict(X_test)
+Y_pred = classifier.predict(X_test)
 
 # Making the cufusion Matrix
 from sklearn.metrics import confusion_matrix
 cm = confusion_matrix(Y_test, Y_pred)
-print(cm)
-
-# Knowing accuracy result
-from sklearn.metrics import accuracy_score
-print(accuracy_score(Y_test, Y_pred))
 
 # Measiring F1 Score
 from sklearn.metrics import f1_score
